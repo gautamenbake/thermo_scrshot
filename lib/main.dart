@@ -5,6 +5,8 @@ import 'package:gallery_saver/gallery_saver.dart';
 import 'package:path/path.dart' show join;
 import 'package:path_provider/path_provider.dart';
 import 'dart:async';
+import 'package:ext_storage/ext_storage.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() {
   runApp(MyApp());
@@ -91,23 +93,28 @@ class _ShowCameraState extends State<ShowCamera> {
       );
       DateTime time = new DateTime.now();
 
-      setState(() async {
+      setState(() {
         _isLoading = true;
-        await controller.takePicture(paths);
-
-        imagePath = File(paths);
-        final directory = await getExternalStorageDirectory();
-        final Directory directoryFolder = Directory('${directory.path}/');
-
-        final Directory directoryNewFolder =
-            await directoryFolder.create(recursive: true);
-        print(directoryNewFolder.path);
-        path = directoryNewFolder.path;
-        final File newImage = await imagePath.copy('$path/$time.png');
-
-        _generatedImage = newImage;
-        save();
       });
+      await controller.takePicture(paths);
+      imagePath = File(paths);
+      // final directory = await getExternalStorageDirectory();
+      var status = await Permission.storage.status;
+      if (!status.isGranted) {
+        await Permission.storage.request();
+      }
+      final directory = await ExtStorage.getExternalStorageDirectory();
+      final Directory directoryFolder = Directory('$directory/thermo');
+
+      final Directory directoryNewFolder = await directoryFolder.create(
+        recursive: true,
+      );
+      print(directoryNewFolder.path);
+      path = directoryNewFolder.path;
+      final File newImage = await imagePath.copy('$path/$time.png');
+
+      _generatedImage = newImage;
+      save();
     } catch (e) {
       print(e);
     }
@@ -115,7 +122,7 @@ class _ShowCameraState extends State<ShowCamera> {
 
   save() async {
     // await controller.dispose();
-    await GallerySaver.saveImage(_generatedImage.path, albumName: 'thermoapp');
+    await GallerySaver.saveImage(_generatedImage.path);
     setState(() {
       _isLoading = false;
     });
