@@ -1,12 +1,15 @@
 import 'dart:io';
+import 'package:date_format/date_format.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
+import 'package:flutter/rendering.dart';
 import 'package:gallery_saver/gallery_saver.dart';
 import 'package:path/path.dart' show join;
 import 'package:path_provider/path_provider.dart';
 import 'dart:async';
 import 'package:ext_storage/ext_storage.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:screenshot/screenshot.dart';
 
 void main() {
   runApp(MyApp());
@@ -22,6 +25,7 @@ class MyApp extends StatelessWidget {
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       home: ShowCamera(),
+      // home: MyHomePage(),
     );
   }
 }
@@ -32,6 +36,7 @@ class ShowCamera extends StatefulWidget {
 }
 
 class _ShowCameraState extends State<ShowCamera> {
+  static var _timer;
   CameraController controller;
   List cameras;
   int selectedCameraIdx;
@@ -39,10 +44,11 @@ class _ShowCameraState extends State<ShowCamera> {
   var _isLoading = false, imagePath;
 
   File _generatedImage;
+
   @override
   void initState() {
     super.initState();
-
+    updateTimer();
     availableCameras().then((availableCameras) {
       cameras = availableCameras;
       if (cameras.length > 0) {
@@ -96,9 +102,9 @@ class _ShowCameraState extends State<ShowCamera> {
       setState(() {
         _isLoading = true;
       });
-      await controller.takePicture(paths);
-      imagePath = File(paths);
-      // final directory = await getExternalStorageDirectory();
+      // await controller.takePicture(paths);
+      imagePath = await _screenshotController.capture(path: paths);
+
       var status = await Permission.storage.status;
       if (!status.isGranted) {
         await Permission.storage.request();
@@ -128,35 +134,56 @@ class _ShowCameraState extends State<ShowCamera> {
     });
   }
 
+  updateTimer() {
+    Timer.periodic(Duration(seconds: 1), (_) {
+      setState(() {
+        _timer = formatDate(DateTime.now(),
+            [yyyy, '-', mm, '-', dd, ' ', hh, ':', nn, ':', ss]);
+      });
+    });
+  }
+
+  final ScreenshotController _screenshotController = ScreenshotController();
+
   @override
   Widget build(BuildContext context) {
-    //get data of bluetooth resp
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Thermo SCRSHT'),
-      ),
-      body: Column(
-        children: [
-          _isLoading
-              ? Expanded(
-                  child: Center(
-                    child: CircularProgressIndicator(),
+    final mediaquery = MediaQuery.of(context).size.width;
+    return Screenshot(
+      controller: _screenshotController,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Thermo SCRSHT'),
+        ),
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _isLoading
+                ? Expanded(
+                    child: Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                : Container(
+                    width: MediaQuery.of(context).size.width,
+                    child: _cameraPreviewWidget(),
                   ),
-                )
-              : Container(
-                  width: MediaQuery.of(context).size.width,
-                  child: _cameraPreviewWidget(),
-                ),
-          SizedBox(height: 10),
-          RaisedButton(
-            onPressed: () {
-              // takeScreenShot();
-              getImage();
-            },
-            child: Text('Save'),
-            color: Colors.amber,
-          )
-        ],
+            SizedBox(height: 10),
+            RaisedButton(
+              onPressed: () {
+                // takeScreenShot();
+                getImage();
+              },
+              child: Text('Save'),
+              color: Colors.amber,
+            ),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Center(child: Text(_timer.toString())),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
