@@ -5,6 +5,7 @@ import 'package:gallery_saver/gallery_saver.dart';
 import 'package:path/path.dart' show join;
 import 'package:path_provider/path_provider.dart';
 import 'dart:async';
+import 'package:ext_storage/ext_storage.dart';
 
 void main() {
   runApp(MyApp());
@@ -94,16 +95,17 @@ class _ShowCameraState extends State<ShowCamera> {
       setState(() async {
         _isLoading = true;
         await controller.takePicture(paths);
+
         imagePath = File(paths);
-        final Directory directory = await getExternalStorageDirectory();
+        final directory = await ExtStorage.getExternalStorageDirectory();
         final Directory directoryFolder =
-            Directory('${directory.path}/images/');
+            Directory('$directory/thermo/');
 
         final Directory directoryNewFolder =
             await directoryFolder.create(recursive: true);
         print(directoryNewFolder.path);
         path = directoryNewFolder.path;
-        final File newImage = await imagePath.copy('$path/image1_$time.png');
+        final File newImage = await imagePath.copy('$path/$time.png');
 
         _generatedImage = newImage;
         save();
